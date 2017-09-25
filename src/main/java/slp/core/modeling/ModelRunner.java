@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.DoubleSummaryStatistics;
 import java.util.List;
 import java.util.Map;
+import java.util.Scanner;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -108,15 +109,34 @@ public class ModelRunner {
 		learnCounts = new long[] { 0, 0 };
 		learnTime = new long[] { -System.currentTimeMillis() };
 		try {
-			Files.walk(file.toPath())
-				.map(Path::toFile)
-				.filter(File::isFile)
-				.peek(f -> {
-					if (++learnCounts[0] % 1000 == 0) {
-						System.out.println("Counting at file " + learnCounts[0] + ", tokens processed: " + learnCounts[1] + " in " + (learnTime[0] + System.currentTimeMillis())/1000 + "s");
-					}
-				})
-				.forEach(f -> learnFile(model, f));
+			if(file.isDirectory()) {
+				Files.walk(file.toPath())
+					.map(Path::toFile) //A stream of file is needed here
+					.filter(f -> (f.isFile() && f.getAbsolutePath().endsWith("java")))
+					.peek(f -> {
+						if (++learnCounts[0] % 1000 == 0) {
+							System.out.println("Counting at file " + learnCounts[0] + ", tokens processed: " + learnCounts[1] + " in " + (learnTime[0] + System.currentTimeMillis())/1000 + "s");
+						}
+					})
+					.forEach(f -> learnFile(model, f));
+			}
+			else {
+				Scanner inpScanner = new Scanner(file);
+				ArrayList<File> files = new ArrayList<File>();
+				while(inpScanner.hasNextLine()) {
+					files.add(new File(inpScanner.nextLine()));
+				}
+				files.stream()
+					.filter(f -> (f.isFile() && f.getAbsolutePath().endsWith("java")))
+					.peek(f -> {
+						if (++learnCounts[0] % 1000 == 0) {
+							System.out.println("Counting at file " + learnCounts[0] + ", tokens processed: " + learnCounts[1] + " in " + (learnTime[0] + System.currentTimeMillis())/1000 + "s");
+						}
+					})
+					.forEach(f -> learnFile(model, f));
+				inpScanner.close();
+				
+			}
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -190,16 +210,36 @@ public class ModelRunner {
 		modelTime = new long[] { -System.currentTimeMillis() };
 		ent = new double[] { 0.0 };
 		try {
-			return Files.walk(file.toPath())
-				.map(Path::toFile)
-				.filter(File::isFile)
-				.peek(f -> {
-					if (++modelCounts[0] % 100 == 0) {
-						System.out.printf("Modeling @ file %d (%d tokens, %ds), entropy: %.4f\n",
-								modelCounts[0], modelCounts[1], (System.currentTimeMillis() + modelTime[0])/1000, ent[0]/modelCounts[1]);
-					}
-				})
-				.map(f -> modelFile(model, f));
+			if(file.isDirectory()) {
+				return Files.walk(file.toPath())
+					.map(Path::toFile)
+					.filter(f -> (f.isFile() && f.getAbsolutePath().endsWith("java")))
+					.peek(f -> {
+						if (++modelCounts[0] % 100 == 0) {
+							System.out.printf("Modeling @ file %d (%d tokens, %ds), entropy: %.4f\n",
+									modelCounts[0], modelCounts[1], (System.currentTimeMillis() + modelTime[0])/1000, ent[0]/modelCounts[1]);
+						}
+					})
+					.map(f -> modelFile(model, f));
+			}
+			else {
+				Scanner inpScanner = new Scanner(file);
+				ArrayList<File> files = new ArrayList<File>();
+				while(inpScanner.hasNextLine()) {
+					files.add(new File(inpScanner.nextLine()));
+				}
+				inpScanner.close();
+				return files.stream()
+					.filter(f -> (f.isFile() && f.getAbsolutePath().endsWith("java")))
+					.peek(f -> {
+						if (++modelCounts[0] % 100 == 0) {
+							System.out.printf("Modeling @ file %d (%d tokens, %ds), entropy: %.4f\n",
+									modelCounts[0], modelCounts[1], (System.currentTimeMillis() + modelTime[0])/1000, ent[0]/modelCounts[1]);
+						}
+					})
+					.map(f -> modelFile(model, f));
+				
+			}
 		} catch (IOException e) {
 			e.printStackTrace();
 		}

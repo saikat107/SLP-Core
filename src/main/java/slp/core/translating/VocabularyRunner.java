@@ -17,6 +17,7 @@ import java.util.stream.Stream;
 
 import slp.core.io.Reader;
 import slp.core.lexing.LexerRunner;
+import slp.core.util.Util;
 
 public class VocabularyRunner {
 	
@@ -130,9 +131,11 @@ public class VocabularyRunner {
 	 */
 	public static void write(File file) {
 		try (BufferedWriter fw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_8))) {
+			Util.logln(Vocabulary.size());
 			for (int i = 0; i < Vocabulary.size(); i++) {
 				Integer count = Vocabulary.counts.get(i);
 				String word = Vocabulary.words.get(i);
+				Util.logln(count + "\t" + i + "\t" + word.toString());
 				fw.append(count + "\t" + i + "\t" + word.toString() + "\n");
 			}
 		} catch (IOException e) {

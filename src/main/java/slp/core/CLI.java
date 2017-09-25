@@ -3,6 +3,7 @@ package slp.core;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.DoubleSummaryStatistics;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -34,6 +35,7 @@ import slp.core.modeling.ngram.WBModel;
 import slp.core.translating.Vocabulary;
 import slp.core.translating.VocabularyRunner;
 import slp.core.util.Pair;
+import slp.core.util.Util;
 
 /**
  * Provides a command line interface to a runnable jar produced from this source code.
@@ -336,6 +338,7 @@ public class CLI {
 		if (arguments.length >= 5) {
 			File inDir = new File(getTrain());
 			File outFile = new File(getArg(COUNTER));
+			Util.logln(outFile.getAbsolutePath());
 			if (!inDir.exists()) {
 				System.err.println("Source path for training does not exist: " + inDir);
 				return;
@@ -348,14 +351,14 @@ public class CLI {
 			// Force GigaCounter.resolve() (if applicable), just for accurate timings below
 			counter.getCount();
 			long t = System.currentTimeMillis();
-			System.out.println("Writing counter to file");
+			Util.logln("Writing counter to file");
 			CounterIO.writeCounter(counter, outFile);
-			System.out.println("Counter written in " + (System.currentTimeMillis() - t)/1000 + "s");
+			Util.logln("Counter written in " + (System.currentTimeMillis() - t)/1000 + "s");
 			if (emptyVocab) {
-				System.out.println("Writing vocabulary to file");
+				Util.logln("Writing vocabulary to file");
 				File vocabFile = isSet(VOCABULARY) ? new File(getArg(VOCABULARY)) : new File(outFile.getParentFile(), "train.vocab");
 				VocabularyRunner.write(vocabFile);
-				System.out.println("Vocabulary written");
+				Util.logln("Vocabulary written");
 			}
 		}
 		else {
@@ -402,6 +405,26 @@ public class CLI {
 			else ModelRunner.learn(nGramModel, trainDir);
 			Model model = wrapModel(nGramModel);
 			Stream<Pair<File, List<List<Double>>>> fileProbs = ModelRunner.model(model, testDir);
+			
+			/*fileProbs.forEach(s -> {
+				Util.logln(s.left.getAbsolutePath());
+				Util.logln(s.right.size());
+				List<Integer> szs = new ArrayList<Integer>();
+				int numberOfLines = s.right.size();
+				for(int i = 1; i <= numberOfLines; i++){
+					System.out.print(i + ",");
+					List<Double> probs = s.right.get(i-1);
+					double total = 0;
+					for(Double prob : probs){
+						if(prob != 0.00){
+							total += (prob);
+						}
+					}
+					System.out.print(total/probs.size());
+					Util.println("");
+				}
+			});*/
+			
 			int[] fileCount = { 0 };
 			DoubleSummaryStatistics stats = ModelRunner.getStats(fileProbs.peek(f -> write(f)).peek(f -> fileCount[0]++));
 			System.out.printf("Testing complete, modeled %d files with %d tokens yielding average entropy:\t%.4f\n",
@@ -424,10 +447,18 @@ public class CLI {
 			}
 			else {
 				Stream<Pair<File, List<List<Double>>>> fileMRRs = ModelRunner.predict(getModel(), inDir);
-				int[] fileCount = { 0 };
+				fileMRRs.forEach(s -> {
+					Util.logln(s.left.getAbsolutePath());
+					Util.logln(s.right.size());
+					for(List<Double>probs : s.right){
+						Util.logln(probs);
+					}
+					//Util.logln(szs);
+				});
+				/*int[] fileCount = { 0 };
 				DoubleSummaryStatistics stats = ModelRunner.getStats(fileMRRs.peek(f -> write(f)).peek(f -> fileCount[0]++));
 				System.out.printf("Testing complete, modeled %d files with %d tokens yielding average MRR:\t%.4f\n",
-						fileCount[0], stats.getCount(), stats.getAverage());
+						fileCount[0], stats.getCount(), stats.getAverage());*/
 			}
 		}
 		else {
@@ -454,10 +485,19 @@ public class CLI {
 			else ModelRunner.learn(nGramModel, trainDir);
 			Model model = wrapModel(nGramModel);
 			Stream<Pair<File, List<List<Double>>>> fileMRRs = ModelRunner.predict(model, testDir);
-			int[] fileCount = { 0 };
+			fileMRRs.forEach(s -> {
+				Util.logln(s.left.getAbsolutePath());
+				Util.logln(s.right.size());
+				List<Integer> szs = new ArrayList<Integer>();
+				for(List<Double>probs : s.right){
+					Util.logln(probs);
+				}
+				//Util.logln(szs);
+			});
+			/*int[] fileCount = { 0 };
 			DoubleSummaryStatistics stats = ModelRunner.getStats(fileMRRs.peek(f -> write(f)).peek(f -> fileCount[0]++));
 			System.out.printf("Testing complete, modeled %d files with %d tokens yielding average MRR:\t%.4f\n",
-					fileCount[0], stats.getCount(), stats.getAverage());
+					fileCount[0], stats.getCount(), stats.getAverage());*/
 		}
 		else {
 			System.err.println("Not enough arguments given."
